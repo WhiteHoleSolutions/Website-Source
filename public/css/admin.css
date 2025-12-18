@@ -446,6 +446,100 @@ body {
     }
 }
 
+/* Authentication Overlay */
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.auth-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.auth-modal {
+    background: white;
+    padding: 3rem;
+    border-radius: 16px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.auth-modal h2 {
+    margin: 0 0 2rem 0;
+    font-size: 1.5rem;
+    text-align: center;
+    color: var(--text-color);
+}
+
+#auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+#auth-form input {
+    padding: 1rem;
+    font-size: 1rem;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+#auth-form input:focus {
+    outline: none;
+    border-color: var(--text-color);
+}
+
+#auth-form button {
+    padding: 1rem;
+    background-color: var(--text-color);
+    color: var(--bg-color);
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#auth-form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.auth-error {
+    color: #ff3b30;
+    font-size: 0.875rem;
+    text-align: center;
+    min-height: 1.2em;
+}
+
+@media (prefers-color-scheme: dark) {
+    .auth-modal {
+        background: #1d1d1f;
+    }
+    
+    #auth-form input {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+}
+
 @media (max-width: 768px) {
     .admin-tabs {
         overflow-x: auto;
@@ -470,5 +564,9 @@ body {
 
     .inquiry-actions button {
         flex: 1;
+    }
+    
+    .auth-modal {
+        padding: 2rem;
     }
 }

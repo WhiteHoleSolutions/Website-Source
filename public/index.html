@@ -19,8 +19,24 @@
     
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/modules.css">
+    <link rel="stylesheet" href="css/loading.css">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-logo">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="20" fill="#2F2F2F" class="inner-circle"/>
+                <circle cx="50" cy="50" r="35" fill="none" stroke="#2F2F2F" stroke-width="2" class="outer-circle"/>
+            </svg>
+        </div>
+        <div class="loading-text">Loading White Hole Solutions</div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="loading-percentage" id="loadingPercentage">0%</div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <nav class="nav-container">
@@ -270,5 +286,42 @@
     <script src="js/gallery.js"></script>
     <script src="js/inquiry.js"></script>
     <script src="js/admin-access.js"></script>
+    <script>
+        // Loading screen logic
+        (function() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const progressBar = document.getElementById('progressBar');
+            const loadingPercentage = document.getElementById('loadingPercentage');
+            let progress = 0;
+            
+            // Simulate loading progress
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = progress + '%';
+                loadingPercentage.textContent = Math.round(progress) + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        loadingScreen.classList.add('hidden');
+                    }, 300);
+                }
+            }, 200);
+            
+            // Ensure loading screen hides after page fully loads
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    progress = 100;
+                    progressBar.style.width = '100%';
+                    loadingPercentage.textContent = '100%';
+                    setTimeout(() => {
+                        loadingScreen.classList.add('hidden');
+                    }, 300);
+                }, 100);
+            });
+        })();
+    </script>
 </body>
 </html>

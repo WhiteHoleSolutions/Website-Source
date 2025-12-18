@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin Login | White Hole Solutions</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 450px;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo {
+            margin: 0 auto 1.5rem;
+            animation: breathe 3s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .login-logo svg {
+            width: 80px;
+            height: 80px;
+        }
+
+        .login-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #2F2F2F;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .login-subtitle {
+            font-size: 0.9375rem;
+            color: #666;
+            margin: 0;
+        }
+
+        .login-form {
+            margin-top: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2F2F2F;
+            margin-bottom: 0.5rem;
+            font-size: 0.9375rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+        }
+
+        .error-message.show {
+            opacity: 1;
+            transform: scale(1);
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .back-link a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            transition: opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-link a:hover {
+            opacity: 0.8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .login-card {
+                background: rgba(29, 29, 31, 0.95);
+            }
+
+            .login-title {
+                color: #F5F5F7;
+            }
+
+            .login-subtitle {
+                color: #98989D;
+            }
+
+            .form-group label {
+                color: #F5F5F7;
+            }
+
+            .form-group input {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.1);
+                color: white;
+            }
+
+            .form-group input:focus {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: #667eea;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .login-card {
+                padding: 2rem;
+            }
+
+            .login-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background Particles -->
+    <div class="particles" id="particles"></div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo-section">
+                <div class="login-logo">
+                    <svg width="80" height="80" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="20" fill="#667eea" class="inner-circle"/>
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="#764ba2" stroke-width="3" class="outer-circle"/>
+                    </svg>
+                </div>
+                <h1 class="login-title">Admin Panel</h1>
+                <p class="login-subtitle">White Hole Solutions</p>
+            </div>
+
+            <form id="login-form" class="login-form">
+                <div id="error-message" class="error-message"></div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        required 
+                        autocomplete="username"
+                        placeholder="Enter username"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required 
+                        autocomplete="current-password"
+                        placeholder="Enter password"
+                    >
+                </div>
+
+                <button type="submit" class="login-button">
+                    Sign In
+                </button>
+            </form>
+        </div>
+
+        <div class="back-link">
+            <a href="index.html">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Website
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Generate animated particles
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 15 + 's';
+            particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+            particlesContainer.appendChild(particle);
+        }
+
+        // Login logic
+        const ADMIN_USERNAME = 'admin';
+        const ADMIN_PASSWORD = 'admin123'; // Change in production
+
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.querySelector('.login-button');
+
+        // Check if already authenticated
+        if (sessionStorage.getItem('admin_authenticated') === 'true') {
+            window.location.href = 'admin.html';
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            // Disable form during authentication
+            loginButton.disabled = true;
+            loginButton.textContent = 'Signing in...';
+
+            // Simulate slight delay for better UX
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+                // Success
+                sessionStorage.setItem('admin_authenticated', 'true');
+                
+                // Show success state
+                loginButton.textContent = 'Success!';
+                loginButton.style.background = 'linear-gradient(135deg, #34c759 0%, #30d158 100%)';
+                
+                // Redirect after short delay
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 800);
+            } else {
+                // Error
+                errorMessage.textContent = 'Invalid username or password';
+                errorMessage.classList.add('show');
+                
+                loginButton.disabled = false;
+                loginButton.textContent = 'Sign In';
+                
+                // Clear password field
+                passwordInput.value = '';
+                passwordInput.focus();
+
+                // Hide error after 3 seconds
+                setTimeout(() => {
+                    errorMessage.classList.remove('show');
+                }, 3000);
+            }
+        });
+
+        // Logo breathing animation
+        const innerCircle = document.querySelector('.inner-circle');
+        const outerCircle = document.querySelector('.outer-circle');
+        let time = 0;
+
+        function animateLogo() {
+            time += 0.01;
+            const pulse = Math.sin(time) * 0.08;
+            const outerPulse = Math.sin(time * 0.8) * 0.12;
+            
+            innerCircle.style.transform = `scale(${1 + pulse})`;
+            outerCircle.style.transform = `scale(${1 + outerPulse})`;
+            
+            requestAnimationFrame(animateLogo);
+        }
+        animateLogo();
+    </script>
+</body>
+</html>

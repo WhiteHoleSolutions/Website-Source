@@ -396,5 +396,15 @@ function logout() {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    adminPanel = new AdminPanel();
+    // Only initialize if authenticated
+    if (sessionStorage.getItem('admin_authenticated') === 'true') {
+        adminPanel = new AdminPanel();
+    }
+    
+    // Re-check authentication periodically
+    setInterval(() => {
+        if (sessionStorage.getItem('admin_authenticated') !== 'true') {
+            window.location.reload();
+        }
+    }, 5000);
 });
