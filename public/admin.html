@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin Panel | White Hole Solutions</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/modules.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="admin-header-content">
+            <h1 class="admin-title">Admin Panel</h1>
+            <button class="admin-logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-tabs">
+            <button class="admin-tab active" data-tab="gallery">Gallery Management</button>
+            <button class="admin-tab" data-tab="inquiries">Customer Inquiries</button>
+        </div>
+
+        <!-- Gallery Management Tab -->
+        <div id="gallery-tab" class="admin-tab-content active">
+            <div class="admin-actions">
+                <button class="admin-btn" onclick="openCreateAlbumModal()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 0.5rem;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create New Album
+                </button>
+            </div>
+            <div id="admin-albums" class="admin-albums-grid">
+                <!-- Albums will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Inquiries Tab -->
+        <div id="inquiries-tab" class="admin-tab-content">
+            <div id="inquiries-list" class="inquiries-list">
+                <!-- Inquiries will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Album Modal -->
+    <div id="album-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Create New Album</h2>
+            </div>
+            <form id="album-form" class="modal-form">
+                <div class="form-group">
+                    <label for="album-name">Album Name *</label>
+                    <input type="text" id="album-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="album-category">Category *</label>
+                    <select id="album-category" required>
+                        <option value="">Select category</option>
+                        <option value="photography">Photography</option>
+                        <option value="videography">Videography</option>
+                        <option value="branding">Branding & Design</option>
+                        <option value="social-media">Social Media</option>
+                        <option value="app-development">App Development</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="album-images">Upload Images *</label>
+                    <input type="file" id="album-images" accept="image/*" multiple>
+                    <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                        Select multiple images (JPG, PNG, WebP)
+                    </p>
+                </div>
+                <div id="image-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <!-- Image previews will appear here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="cancel-btn" onclick="closeAlbumModal()">Cancel</button>
+                    <button type="submit" class="admin-btn">Save Album</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/admin-panel.js"></script>
+</body>
+</html>
