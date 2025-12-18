@@ -100,7 +100,7 @@
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+    background: linear-gradient(90deg, #0071e3 0%, #0077ed 50%, #0071e3 100%);
     background-size: 200% 100%;
     border-radius: 10px;
     width: 0%;
@@ -149,6 +149,10 @@
 @media (prefers-color-scheme: dark) {
     .progress-container {
         background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .progress-bar {
+        background: linear-gradient(90deg, #0a84ff 0%, #409cff 50%, #0a84ff 100%);
     }
 }
 
