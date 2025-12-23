@@ -9,10 +9,22 @@ const { dbHelpers } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Define the persistent disk path (Render.com)
+const RENDER_DISK_PATH = '/app/disk';
+
+// Determine uploads directory
+let uploadsDir;
+if (fs.existsSync(RENDER_DISK_PATH)) {
+    console.log('Using persistent disk for uploads');
+    uploadsDir = path.join(RENDER_DISK_PATH, 'uploads');
+} else {
+    console.log('Using local storage for uploads');
+    uploadsDir = path.join(__dirname, 'uploads');
+}
+
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
+    fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Configure multer for file uploads

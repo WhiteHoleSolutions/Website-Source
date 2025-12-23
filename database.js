@@ -1,12 +1,26 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
+
+// Define the persistent disk path (Render.com)
+const RENDER_DISK_PATH = '/app/disk';
+
+// Determine database path
+let dbPath;
+if (fs.existsSync(RENDER_DISK_PATH)) {
+    console.log('Using persistent disk for database');
+    dbPath = path.join(RENDER_DISK_PATH, 'database.db');
+} else {
+    console.log('Using local storage for database');
+    dbPath = path.join(__dirname, 'database.db');
+}
 
 // Database connection
-const db = new sqlite3.Database(path.join(__dirname, 'database.db'), (err) => {
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error connecting to database:', err);
     } else {
-        console.log('Connected to SQLite database');
+        console.log(`Connected to SQLite database at ${dbPath}`);
         initializeDatabase();
     }
 });
