@@ -65,11 +65,119 @@ function initializeDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Customers table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Bookings table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS bookings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                details TEXT,
+                amount REAL,
+                booking_date TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Add new columns to albums table if they don't exist
+        const addColumn = (table, column, type) => {
+            db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`, (err) => {
+                // Ignore error if column already exists
+            });
+        };
+
+        addColumn('albums', 'is_private', 'INTEGER DEFAULT 0');
+        addColumn('albums', 'passphrase', 'TEXT');
+        addColumn('albums', 'access_token', 'TEXT');
+        addColumn('albums', 'customer_id', 'INTEGER');
+        
+        addColumn('images', 'client_feedback', 'TEXT');
+        addColumn('images', 'is_selected', 'INTEGER DEFAULT 0');
     });
 }
 
 // Database helper functions
 const dbHelpers = {
+    // Customer operations
+    getAllCustomers: () => {
+        return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM customers ORDER BY created_at DESC', (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+    },
+
+    createCustomer: (data) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'INSERT INTO customers (name, email, phone, notes) VALUES (?, ?, ?, ?)',
+                [data.name, data.email, data.phone, data.notes],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                }
+            );
+        });
+    },
+
+    updateCustomer: (id, data) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'UPDATE customers SET name = ?, email = ?, phone = ?, notes = ? WHERE id = ?',
+                [data.name, data.email, data.phone, data.notes, id],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+    },
+
+    deleteCustomer: (id) => {
+        return new Promise((resolve, reject) => {
+            db.run('DELETE FROM customers WHERE id = ?', [id], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+
+    // Booking operations
+    getCustomerBookings: (customerId) => {
+        return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM bookings WHERE customer_id = ? ORDER BY booking_date DESC', [customerId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+    },
+
+    createBooking: (data) => {
+        return new Promise((resolve, reject) => {
+            db.run(
+                'INSERT INTO bookings (customer_id, details, amount, booking_date) VALUES (?, ?, ?, ?)',
+                [data.customer_id, data.details, data.amount, data.booking_date],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                }
+            );
+        });
+    },
+
     // Album operations
     getAllAlbums: () => {
         return new Promise((resolve, reject) => {
@@ -79,6 +187,9 @@ const dbHelpers = {
                     a.name, 
                     a.category, 
                     a.created_at,
+                    a.is_private,
+                    a.passphrase,
+                    a.access_token,
                     GROUP_CONCAT(
                         json_object(
                             'id', i.id,
@@ -99,6 +210,9 @@ const dbHelpers = {
                         name: row.name,
                         category: row.category,
                         created_at: row.created_at,
+                        is_private: row.is_private,
+                        passphrase: row.passphrase,
+                        access_token: row.access_token,
                         images: row.images_json 
                             ? JSON.parse('[' + row.images_json + ']').sort((a, b) => a.order_index - b.order_index)
                             : []
@@ -123,12 +237,35 @@ const dbHelpers = {
             });
         });
     },
-    
-    createAlbum: (name, category) => {
+
+    getAlbumByToken: (token) => {
         return new Promise((resolve, reject) => {
+            db.get('SELECT * FROM albums WHERE access_token = ?', [token], (err, album) => {
+                if (err) reject(err);
+                else if (!album) resolve(null);
+                else {
+                    // Don't return images yet, wait for passphrase verification
+                    resolve(album);
+                }
+            });
+        });
+    },
+    
+    createAlbum: (data) => {
+        return new Promise((resolve, reject) => {
+            // Handle both old signature (name, category) and new object signature
+            const name = typeof data === 'object' ? data.name : arguments[0];
+            const category = typeof data === 'object' ? data.category : arguments[1];
+            const is_private = (typeof data === 'object' && data.is_private) ? 1 : 0;
+            const passphrase = (typeof data === 'object' && data.passphrase) ? data.passphrase : null;
+            const customer_id = (typeof data === 'object' && data.customer_id) ? data.customer_id : null;
+            
+            // Generate random token if private
+            const access_token = is_private ? Math.random().toString(36).substring(2, 8).toUpperCase() : null;
+
             db.run(
-                'INSERT INTO albums (name, category) VALUES (?, ?)',
-                [name, category],
+                'INSERT INTO albums (name, category, is_private, passphrase, access_token, customer_id) VALUES (?, ?, ?, ?, ?, ?)',
+                [name, category, is_private, passphrase, access_token, customer_id],
                 function(err) {
                     if (err) reject(err);
                     else resolve(this.lastID);
@@ -137,11 +274,42 @@ const dbHelpers = {
         });
     },
     
-    updateAlbum: (id, name, category) => {
+    updateAlbum: (id, data) => {
+        return new Promise((resolve, reject) => {
+            // Handle both old signature (id, name, category) and new object signature
+            const name = typeof data === 'object' ? data.name : arguments[1];
+            const category = typeof data === 'object' ? data.category : arguments[2];
+            
+            // If it's the old signature, we just update name and category
+            if (typeof data !== 'object') {
+                db.run(
+                    'UPDATE albums SET name = ?, category = ? WHERE id = ?',
+                    [name, category, id],
+                    (err) => {
+                        if (err) reject(err);
+                        else resolve();
+                    }
+                );
+                return;
+            }
+
+            // New signature with full data
+            db.run(
+                'UPDATE albums SET name = ?, category = ?, is_private = ?, passphrase = ?, customer_id = ? WHERE id = ?',
+                [name, category, data.is_private ? 1 : 0, data.passphrase, data.customer_id, id],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+    },
+
+    updateImageFeedback: (id, feedback, isSelected) => {
         return new Promise((resolve, reject) => {
             db.run(
-                'UPDATE albums SET name = ?, category = ? WHERE id = ?',
-                [name, category, id],
+                'UPDATE images SET client_feedback = ?, is_selected = ? WHERE id = ?',
+                [feedback, isSelected ? 1 : 0, id],
                 (err) => {
                     if (err) reject(err);
                     else resolve();

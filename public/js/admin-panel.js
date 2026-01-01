@@ -9,7 +9,9 @@ class AdminPanel {
         this.setupTabs();
         this.loadAlbums();
         this.loadInquiries();
+        this.loadCustomers();
         this.setupAlbumForm();
+        this.setupCustomerForm();
     }
 
     setupTabs() {
@@ -28,6 +30,104 @@ class AdminPanel {
                 document.getElementById(`${tabName}-tab`).classList.add('active');
             });
         });
+    }
+
+    async loadCustomers() {
+        const container = document.getElementById('customers-list');
+        const select = document.getElementById('album-customer');
+        
+        try {
+            const response = await fetch('/api/customers');
+            const customers = await response.json();
+            
+            // Populate dropdown
+            if (select) {
+                select.innerHTML = '<option value="">Select a customer...</option>' + 
+                    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            }
+
+            // Populate list
+            if (container) {
+                if (customers.length === 0) {
+                    container.innerHTML = '<p class="empty-state">No customers found.</p>';
+                    return;
+                }
+                
+                container.innerHTML = customers.map(customer => `
+                    <div class="inquiry-card">
+                        <div class="inquiry-header">
+                            <h3 class="inquiry-name">${customer.name}</h3>
+                            <span class="inquiry-date">${new Date(customer.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="inquiry-details">
+                            <p><strong>Email:</strong> ${customer.email || 'N/A'}</p>
+                            <p><strong>Phone:</strong> ${customer.phone || 'N/A'}</p>
+                            <p><strong>Notes:</strong> ${customer.notes || 'N/A'}</p>
+                        </div>
+                        <div class="admin-album-actions" style="margin-top: 1rem;">
+                            <button class="edit-btn" onclick="alert('Booking management coming soon!')">Bookings</button>
+                            <button class="delete-btn" onclick="adminPanel.deleteCustomer(${customer.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading customers:', error);
+        }
+    }
+
+    setupCustomerForm() {
+        const form = document.getElementById('customer-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const data = {
+                    name: document.getElementById('customer-name').value,
+                    email: document.getElementById('customer-email').value,
+                    phone: document.getElementById('customer-phone').value,
+                    notes: document.getElementById('customer-notes').value
+                };
+                
+                try {
+                    const response = await fetch('/api/customers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        closeCustomerModal();
+                        this.loadCustomers();
+                    }
+                } catch (error) {
+                    console.error('Error creating customer:', error);
+                }
+            });
+        }
+    }
+
+    async deleteCustomer(id) {
+        if (!confirm('Are you sure you want to delete this customer?')) return;
+        try {
+            await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+            this.loadCustomers();
+        } catch (error) {
+            console.error('Error deleting customer:', error);
+        }
+    }
+
+    async loadCustomerDropdown() {
+        const select = document.getElementById('album-customer');
+        try {
+            const response = await fetch('/api/customers');
+            if (response.ok) {
+                const customers = await response.json();
+                select.innerHTML = '<option value="">Select a customer...</option>' + 
+                    customers.map(c => `<option value="${c.id}">${c.name} (${c.email})</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading customers for dropdown:', error);
+        }
     }
 
     async loadAlbums() {
@@ -75,16 +175,29 @@ class AdminPanel {
     createAlbumCard(album) {
         const coverImage = album.images[0]?.url || 'https://picsum.photos/400/300';
         const imageCount = album.images.length;
+        const isVideo = coverImage.endsWith('.mp4') || coverImage.endsWith('.mov');
         
         return `
             <div class="admin-album-card" data-album-id="${album.id}">
-                <img src="${coverImage}" alt="${album.name}" class="admin-album-cover">
+                ${isVideo ? 
+                    `<video src="${coverImage}" class="admin-album-cover" muted></video>` : 
+                    `<img src="${coverImage}" alt="${album.name}" class="admin-album-cover">`
+                }
                 <div class="admin-album-info">
                     <h3 class="admin-album-name">${album.name}</h3>
-                    <div class="admin-album-category">${this.formatCategory(album.category)}</div>
-                    <div class="admin-album-stats">
-                        <span>${imageCount} image${imageCount !== 1 ? 's' : ''}</span>
+                    <div class="admin-album-category">
+                        ${this.formatCategory(album.category)}
+                        ${album.is_private ? '<span style="background:#333; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-left:5px;">PRIVATE</span>' : ''}
                     </div>
+                    <div class="admin-album-stats">
+                        <span>${imageCount} item${imageCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    ${album.is_private ? `
+                        <div class="private-info-box">
+                            <strong>Link:</strong> /${album.access_token}<br>
+                            <strong>Pass:</strong> ${album.passphrase}
+                        </div>
+                    ` : ''}
                     <div class="admin-album-actions">
                         <button class="edit-btn" onclick="adminPanel.editAlbum(${album.id})">Edit</button>
                         <button class="delete-btn" onclick="adminPanel.deleteAlbum(${album.id}, '${album.name}')">Delete</button>
@@ -215,13 +328,15 @@ class AdminPanel {
             files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    const img = document.createElement('img');
-                    img.src = event.target.result;
-                    img.style.width = '100%';
-                    img.style.height = '100px';
-                    img.style.objectFit = 'cover';
-                    img.style.borderRadius = '8px';
-                    imagePreview.appendChild(img);
+                    const isVideo = file.type.startsWith('video/');
+                    const el = isVideo ? document.createElement('video') : document.createElement('img');
+                    el.src = event.target.result;
+                    el.style.width = '100%';
+                    el.style.height = '100px';
+                    el.style.objectFit = 'cover';
+                    el.style.borderRadius = '8px';
+                    if (isVideo) el.muted = true;
+                    imagePreview.appendChild(el);
                 };
                 reader.readAsDataURL(file);
             });
@@ -237,15 +352,29 @@ class AdminPanel {
         const name = document.getElementById('album-name').value;
         const category = document.getElementById('album-category').value;
         const imageFiles = document.getElementById('album-images').files;
+        
+        const isPrivate = document.getElementById('album-private').checked;
+        const passphrase = document.getElementById('album-passphrase').value;
+        const customerId = document.getElementById('album-customer').value;
 
-        if (!name || !category || imageFiles.length === 0) {
-            alert('Please fill in all required fields and select at least one image');
+        if (!name || !category) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        if (isPrivate && !passphrase) {
+            alert('Passphrase is required for private albums');
             return;
         }
 
         const formData = new FormData();
         formData.append('name', name);
         formData.append('category', category);
+        formData.append('is_private', isPrivate);
+        if (isPrivate) {
+            formData.append('passphrase', passphrase);
+            if (customerId) formData.append('customer_id', customerId);
+        }
         
         Array.from(imageFiles).forEach((file, index) => {
             formData.append(`images`, file);
@@ -279,11 +408,13 @@ class AdminPanel {
         this.currentAlbumId = null;
     }
 
-    openCreateAlbumModal() {
+    async openCreateAlbumModal() {
         this.currentAlbumId = null;
         document.getElementById('modal-title').textContent = 'Create New Album';
         document.getElementById('album-form').reset();
         document.getElementById('image-preview').innerHTML = '';
+        document.getElementById('private-options').style.display = 'none';
+        await this.loadCustomerDropdown();
         document.getElementById('album-modal').classList.add('active');
     }
 
@@ -297,12 +428,21 @@ class AdminPanel {
         document.getElementById('modal-title').textContent = 'Edit Album';
         
         try {
+            await this.loadCustomerDropdown();
             const response = await fetch(`/api/albums/${albumId}`);
             if (response.ok) {
                 const album = await response.json();
                 document.getElementById('album-name').value = album.name;
                 document.getElementById('album-category').value = album.category;
-                // Note: File inputs cannot be pre-populated for security reasons
+                
+                const privateCheck = document.getElementById('album-private');
+                privateCheck.checked = !!album.is_private;
+                togglePrivateOptions();
+                
+                if (album.is_private) {
+                    document.getElementById('album-passphrase').value = album.passphrase || '';
+                    document.getElementById('album-customer').value = album.customer_id || '';
+                }
             }
         } catch (error) {
             console.error('Error loading album:', error);
@@ -394,11 +534,35 @@ function logout() {
     }
 }
 
+function togglePrivateOptions() {
+    const isPrivate = document.getElementById('album-private').checked;
+    const optionsDiv = document.getElementById('private-options');
+    optionsDiv.style.display = isPrivate ? 'block' : 'none';
+}
+
+function openCustomerModal() {
+    document.getElementById('customer-modal').classList.add('active');
+    document.getElementById('customer-form').reset();
+    document.getElementById('customer-modal-title').textContent = 'Add New Customer';
+    const idInput = document.getElementById('customer-id');
+    if (idInput) idInput.value = '';
+}
+
+function closeCustomerModal() {
+    document.getElementById('customer-modal').classList.remove('active');
+}
+
+// Make functions globally available
+window.openCustomerModal = openCustomerModal;
+window.closeCustomerModal = closeCustomerModal;
+window.togglePrivateOptions = togglePrivateOptions;
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize if authenticated
     if (sessionStorage.getItem('admin_authenticated') === 'true') {
         adminPanel = new AdminPanel();
+        window.adminPanel = adminPanel;
     }
     
     // Re-check authentication periodically

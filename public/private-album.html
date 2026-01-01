@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Album | White Hole Solutions</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/modules.css">
+    <link rel="stylesheet" href="css/loading.css">
+    <style>
+        .private-header {
+            padding: 4rem 2rem;
+            text-align: center;
+            background: var(--bg-secondary);
+        }
+        
+        .auth-container {
+            max-width: 400px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            color: var(--text-color);
+        }
+        
+        .auth-input {
+            width: 100%;
+            padding: 1rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .image-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+        
+        .action-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: var(--bg-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            background: var(--bg-secondary);
+        }
+        
+        .action-btn.selected {
+            background: #0071e3;
+            color: white;
+            border-color: #0071e3;
+        }
+        
+        .feedback-input {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 4px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .download-btn {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.8rem 1.5rem;
+            background: var(--text-color);
+            color: var(--bg-color);
+            text-decoration: none;
+            border-radius: 8px;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .auth-input, .action-btn, .feedback-input {
+                border-color: rgba(255,255,255,0.1);
+            }
+        }
+
+        /* Single Column Layout Overrides */
+        #galleryGrid {
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+            max-width: 900px;
+            margin: 0 auto;
+            padding-bottom: 4rem;
+        }
+
+        #galleryGrid .album-card {
+            cursor: default;
+            transform: none !important;
+            transition: none;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            #galleryGrid .album-card {
+                border-color: rgba(255,255,255,0.1);
+            }
+        }
+        
+        #galleryGrid .album-card:hover {
+            transform: none;
+            box-shadow: var(--shadow-md);
+        }
+
+        #galleryGrid .album-image-container {
+            padding-top: 0;
+            height: auto;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        #galleryGrid .album-cover,
+        #galleryGrid video {
+            position: relative;
+            width: 100%;
+            height: auto;
+            max-height: 85vh;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <svg width="80" height="80" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="20" fill="#2F2F2F" class="logo-float">
+                        <animate attributeName="r" values="20;22;20" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#2F2F2F" stroke-width="2" class="pulse-inner"/>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#2F2F2F" stroke-width="1" class="pulse-outer" opacity="0.5"/>
+                </svg>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="loading-percentage" id="loadingPercentage">0%</div>
+        </div>
+    </div>
+
+    <div id="authSection" class="auth-container" style="display: none;">
+        <h2>Private Album Access</h2>
+        <p>Please enter the passphrase to view this album.</p>
+        <input type="password" id="passphraseInput" class="auth-input" placeholder="Enter passphrase">
+        <button onclick="verifyAccess()" class="cta-button">View Album</button>
+        <p id="authError" style="color: red; margin-top: 1rem; display: none;">Invalid passphrase</p>
+    </div>
+
+    <div id="albumContent" style="display: none;">
+        <header class="private-header">
+            <h1 id="albumTitle">Loading...</h1>
+            <p id="albumCategory" style="color: var(--text-secondary);"></p>
+        </header>
+
+        <main class="container">
+            <div class="gallery-grid" id="galleryGrid">
+                <!-- Images will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const token = window.location.pathname.substring(1);
+        let currentAlbumId = null;
+
+        // Loading Screen Logic
+        const loadingScreen = document.getElementById('loadingScreen');
+        const progressBar = document.getElementById('progressBar');
+        const loadingPercentage = document.getElementById('loadingPercentage');
+        
+        function updateProgress(percent) {
+            progressBar.style.width = percent + '%';
+            loadingPercentage.textContent = percent + '%';
+            if (percent >= 100) {
+                setTimeout(() => {
+                    loadingScreen.classList.add('hidden');
+                }, 500);
+            }
+        }
+
+        // Simulate initial load
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 30;
+            if (progress > 90) clearInterval(interval);
+            updateProgress(Math.min(Math.round(progress), 90));
+        }, 200);
+
+        // Check if album requires auth
+        async function checkAlbum() {
+            // In a real app, we'd have an endpoint to check if auth is needed without sending the token
+            // For now, we'll just show the auth screen
+            document.getElementById('authSection').style.display = 'block';
+            updateProgress(100);
+        }
+
+        async function verifyAccess() {
+            const passphrase = document.getElementById('passphraseInput').value;
+            
+            try {
+                // First we need to find the album ID associated with this token
+                // Since we don't have a direct endpoint for token->id without auth, 
+                // we'll modify the server to return basic info or handle this better.
+                // For this implementation, we'll assume the user was sent here by the server
+                // which means the token is valid. We need to find the album.
+                
+                // Actually, we can't get the ID easily without an endpoint.
+                // Let's add a small script to the server response or fetch all albums and find the matching token?
+                // No, that's insecure.
+                
+                // Better approach: The server should have injected the album ID or we need an endpoint /api/albums/token/:token
+                // Let's assume we fetch all albums (public info) and find the one with the token? No, tokens are private.
+                
+                // Let's try to verify against all albums? No.
+                
+                // Correction: I need to add an endpoint to get album by token.
+                // I'll add it to server.js in a moment. For now, let's assume:
+                const response = await fetch(`/api/albums/token/${token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ passphrase })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('albumContent').style.display = 'block';
+                    loadAlbum(data.album);
+                } else {
+                    document.getElementById('authError').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function loadAlbum(album) {
+            document.getElementById('albumTitle').textContent = album.name;
+            document.getElementById('albumCategory').textContent = album.category;
+            
+            const grid = document.getElementById('galleryGrid');
+            grid.innerHTML = '';
+            
+            album.images.forEach(image => {
+                const card = document.createElement('div');
+                card.className = 'album-card';
+                card.innerHTML = `
+                    <div class="album-image-container">
+                        ${image.url.endsWith('.mp4') || image.url.endsWith('.mov') ? 
+                            `<video src="${image.url}" controls></video>` :
+                            `<img src="${image.url}" alt="Gallery Image" class="album-cover">`
+                        }
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <div class="image-actions">
+                            <button class="action-btn ${image.is_selected ? 'selected' : ''}" 
+                                onclick="toggleSelection(${image.id}, this)">
+                                ${image.is_selected ? 'Selected' : 'Select'}
+                            </button>
+                            <a href="${image.url}" download class="action-btn">Download</a>
+                        </div>
+                        <input type="text" class="feedback-input" 
+                            placeholder="Leave feedback..." 
+                            value="${image.client_feedback || ''}"
+                            onchange="updateFeedback(${image.id}, this.value)">
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function toggleSelection(imageId, btn) {
+            const isSelected = !btn.classList.contains('selected');
+            btn.classList.toggle('selected');
+            btn.textContent = isSelected ? 'Selected' : 'Select';
+            
+            // We need to get the current feedback value to send it along
+            const feedbackInput = btn.parentElement.nextElementSibling;
+            await sendFeedback(imageId, feedbackInput.value, isSelected);
+        }
+
+        async function updateFeedback(imageId, feedback) {
+            // We need to check if it's selected
+            const btn = document.activeElement.previousElementSibling.querySelector('.action-btn'); // Rough approximation
+            // Better: find the button in the same card
+            // For now, let's just assume we don't change selection status here
+            // But the API requires both.
+            // Let's just pass true/false based on UI state?
+            // Actually, let's just fetch the current state from the button class
+            // This is getting complicated without a framework.
+            // Let's simplify:
+            const card = document.querySelector(`button[onclick="toggleSelection(${imageId}, this)"]`).closest('.album-card');
+            const isSelected = card.querySelector('.action-btn').classList.contains('selected');
+            
+            await sendFeedback(imageId, feedback, isSelected);
+        }
+
+        async function sendFeedback(imageId, feedback, isSelected) {
+            await fetch(`/api/images/${imageId}/feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ feedback, is_selected: isSelected })
+            });
+        }
+
+        // Initial check
+        checkAlbum();
+    </script>
+</body>
+</html>

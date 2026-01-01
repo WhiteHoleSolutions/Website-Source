@@ -45,7 +45,9 @@ class GalleryManager {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            this.albums = await response.json();
+            const allAlbums = await response.json();
+            // Filter out private albums
+            this.albums = allAlbums.filter(album => !album.is_private);
             this.renderGallery();
             this.startRotations();
         } catch (error) {

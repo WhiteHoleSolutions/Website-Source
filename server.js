@@ -41,16 +41,16 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB limit
     fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
         
         if (extname && mimetype) {
             cb(null, true);
         } else {
-            cb(new Error('Only image files are allowed!'));
+            cb(new Error('Only image and video files are allowed!'));
         }
     }
 });
@@ -92,13 +92,19 @@ app.get('/api/albums/:id', async (req, res) => {
 // Create new album
 app.post('/api/albums', upload.array('images', 50), async (req, res) => {
     try {
-        const { name, category } = req.body;
+        const { name, category, is_private, passphrase, customer_id } = req.body;
         
         if (!name || !category) {
             return res.status(400).json({ error: 'Name and category are required' });
         }
         
-        const albumId = await dbHelpers.createAlbum(name, category);
+        const albumId = await dbHelpers.createAlbum({
+            name, 
+            category,
+            is_private: is_private === 'true',
+            passphrase,
+            customer_id
+        });
         
         if (req.files && req.files.length > 0) {
             for (let i = 0; i < req.files.length; i++) {
@@ -119,14 +125,20 @@ app.post('/api/albums', upload.array('images', 50), async (req, res) => {
 // Update album
 app.put('/api/albums/:id', upload.array('images', 50), async (req, res) => {
     try {
-        const { name, category } = req.body;
+        const { name, category, is_private, passphrase, customer_id } = req.body;
         const albumId = req.params.id;
         
-        await dbHelpers.updateAlbum(albumId, name, category);
+        await dbHelpers.updateAlbum(albumId, {
+            name, 
+            category,
+            is_private: is_private === 'true',
+            passphrase,
+            customer_id
+        });
         
         if (req.files && req.files.length > 0) {
             const existingImages = await dbHelpers.getAlbumImages(albumId);
-            const startIndex = existingImages.length;
+            const startIndex = existingImages.length > 0 ? Math.max(...existingImages.map(i => i.order_index)) + 1 : 0;
             
             for (let i = 0; i < req.files.length; i++) {
                 const file = req.files[i];
@@ -225,6 +237,130 @@ app.delete('/api/inquiries/:id', async (req, res) => {
     } catch (error) {
         console.error('Error deleting inquiry:', error);
         res.status(500).json({ error: 'Failed to delete inquiry' });
+    }
+});
+
+// ===== CUSTOMER ENDPOINTS =====
+
+app.get('/api/customers', async (req, res) => {
+    try {
+        const customers = await dbHelpers.getAllCustomers();
+        res.json(customers);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch customers' });
+    }
+});
+
+app.post('/api/customers', async (req, res) => {
+    try {
+        const id = await dbHelpers.createCustomer(req.body);
+        res.status(201).json({ id, ...req.body });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create customer' });
+    }
+});
+
+app.put('/api/customers/:id', async (req, res) => {
+    try {
+        await dbHelpers.updateCustomer(req.params.id, req.body);
+        res.json({ message: 'Customer updated' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update customer' });
+    }
+});
+
+app.delete('/api/customers/:id', async (req, res) => {
+    try {
+        await dbHelpers.deleteCustomer(req.params.id);
+        res.json({ message: 'Customer deleted' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete customer' });
+    }
+});
+
+app.get('/api/customers/:id/bookings', async (req, res) => {
+    try {
+        const bookings = await dbHelpers.getCustomerBookings(req.params.id);
+        res.json(bookings);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch bookings' });
+    }
+});
+
+app.post('/api/bookings', async (req, res) => {
+    try {
+        const id = await dbHelpers.createBooking(req.body);
+        res.status(201).json({ id, ...req.body });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create booking' });
+    }
+});
+
+// ===== PRIVATE ALBUM ENDPOINTS =====
+
+app.post('/api/albums/token/:token', async (req, res) => {
+    try {
+        const { passphrase } = req.body;
+        const album = await dbHelpers.getAlbumByToken(req.params.token);
+        
+        if (!album) return res.status(404).json({ error: 'Album not found' });
+        
+        if (album.passphrase === passphrase) {
+            // Fetch images for the album
+            const fullAlbum = await dbHelpers.getAlbum(album.id);
+            res.json({ success: true, album: fullAlbum });
+        } else {
+            res.status(401).json({ error: 'Invalid passphrase' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Verification failed' });
+    }
+});
+
+app.post('/api/albums/:id/verify', async (req, res) => {
+    try {
+        const { passphrase } = req.body;
+        const album = await dbHelpers.getAlbum(req.params.id);
+        
+        if (!album) return res.status(404).json({ error: 'Album not found' });
+        
+        if (album.passphrase === passphrase) {
+            res.json({ success: true, album });
+        } else {
+            res.status(401).json({ error: 'Invalid passphrase' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Verification failed' });
+    }
+});
+
+app.post('/api/images/:id/feedback', async (req, res) => {
+    try {
+        const { feedback, is_selected } = req.body;
+        await dbHelpers.updateImageFeedback(req.params.id, feedback, is_selected);
+        res.json({ message: 'Feedback updated' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update feedback' });
+    }
+});
+
+
+
+// ===== CLIENT TOKEN ROUTE (Must be last) =====
+app.get('/:token', async (req, res, next) => {
+    const token = req.params.token;
+    // Ignore static files or API routes
+    if (token.includes('.') || token === 'api' || token === 'admin') return next();
+    
+    try {
+        const album = await dbHelpers.getAlbumByToken(token);
+        if (album) {
+            res.sendFile(path.join(__dirname, 'public', 'private-album.html'));
+        } else {
+            next();
+        }
+    } catch (error) {
+        next();
     }
 });
 
